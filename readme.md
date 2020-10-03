@@ -83,7 +83,7 @@ npm -v
 Download the latest version:
 
 ```console
-sudo -- bash  -c 'cd /opt;git clone https://github.com/jonathandupre/cccpivot'
+sudo -- bash  -c 'cd /opt;git clone https://github.com/duprej/cccpivot'
 ```
 
 Install dependencies:
