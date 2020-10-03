@@ -11,9 +11,9 @@ How it works ?
 CCCpivot is a simple Node.js script witch provides a TCP server to pass commands (via JSON messages) to a Pioneer CAC jukebox connected on a serial port and sends the result. One instance of the Node.js script is necessary for each jukebox (each serial connection). Many instances have to be launched if you have many autochangers to control. Each instance is separated with his own serial port and his own TCP port.
 |Instance|Description|Serial port|TCP port
 ---|---|---|---
-|Instance 1|Autochanger 1|/dev/usbTTY0|port 8000
-|Instance 2|Autochanger 2|/dev/usbTTY1|port 8001
-|Instance 3|Autochanger 3|/dev/usbTTY2|port 8002
+|Instance 1|Autochanger 1|/dev/ttyUSB0|port 8000
+|Instance 2|Autochanger 2|/dev/ttyUSB1|port 8001
+|Instance 3|Autochanger 3|/dev/ttyUSB2|port 8002
 
 I recommand launching CCCpivot processes with the [CCClauncher Perl script](https://github.com/duprej/ccclauncher). But can be used without (standalone).
 
