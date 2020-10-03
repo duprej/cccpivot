@@ -2,7 +2,7 @@
 
 Introduction
 ----
-CCC = CAC Control Center. CAC is an accronym for dedicated Pioneer CD Autochangers.
+[CCC = CAC Control Center](https://github.com/duprej/ccc). CAC is an accronym for dedicated Pioneer CD Autochangers.
 CCCpivot provides communication with Pioneer CAC autochangers in webbrowsers through a websocket.
 Pioneer CAC jukeboxes are designed to be connected to a computer with a serial console cable. C, VB, Java, C# or Pascal language applications has libraries to access serial ports and send/receive datas with it. But web-browsers don't, they only can do XHR or websockets. CCCpivot is here to make a bridge between RS-232 physical connection and the TCP/web world. 
 
