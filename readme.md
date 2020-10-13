@@ -98,12 +98,12 @@ Check :
 sudo ls -R /opt/cccpivot/
 ```
 
-TLS usage (optionnal)
+TLS usage (optional)
 ----
 
 This is a more complicated way. Not needed for home/local environment.
 
-Additionnal optionnal SSL/TLS vars (WS -> WSS):
+Additionnal optional SSL/TLS vars (WS -> WSS):
 
 ```console
 export CCCSSL=1					    # Use SSL/TLS (HTTPS)
