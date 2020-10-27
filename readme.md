@@ -17,7 +17,7 @@ CCCpivot is a simple Node.js script witch provides a TCP server to pass commands
 
 I recommand launching CCCpivot processes with the [CCClauncher Perl script](https://github.com/duprej/ccclauncher). But can be used without (standalone).
 
-Benefits ?
+Benefits?
 ----
 This is the most flexible solution for any application to simply access Pioneer CAC autochangers because there is no need to have the autochangers connected directly to the computer which run the application. Juboxes can be far away in LAN or WAN, handled through Ethernet, Wi-Fi, VPN (/!\ latency), etc...
 
@@ -89,7 +89,7 @@ sudo -- bash  -c 'cd /opt;git clone https://github.com/duprej/cccpivot'
 Install dependencies:
 
 ```console
-sudo -- bash  -c 'cd /opt/cccpivot/;npm install'
+sudo -- bash  -c 'cd /opt/cccpivot/;npm install --unsafe-perm'
 ```
 
 Check :
