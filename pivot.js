@@ -5,7 +5,7 @@ A Node.js application to send serial commands for Pioneer CAC autochangers by we
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.0.0";
+const VERSION	= "1.0.1";
 
 const PIVOTID 	= process.env.CCCID || 'ac0';				// Unique name of instance
 const DESC	 	= process.env.CCCDESC || 'No description';	// Description of the instance (string)
@@ -103,6 +103,7 @@ const main = () => {
 	logger.info(sprintf("Timeout: %s second(s)",TIMEOUT));
 	logger.info("Password: "+((PASS) ? 'enabled' : 'disabled'));
 	logger.info(`Autochanger model: ${MODEL}`);
+	logger.info(`Left Player ID: ${LPID}`);
 	// Program initialization (instancing core objects)
 	// If SSL so build the https server
 	if (USESSL == 1) {
@@ -189,31 +190,36 @@ const main = () => {
 			try {
 				let jsonMessage=JSON.parse(e);
 				// Reformat the command
-				client.com = jsonMessage.com.toUpperCase().trim().replace(/(\r\n|\n|\r)/gm, "");
-				client.flag = jsonMessage.flag;
-				logger.debug(`Received from client ${client.clientId}: ${client.com}`);
-				if (client.com.charAt(0) == '/') {
-					// The command begins with / so it's an internal command
-					proceedInternalCommand(client);
-				} else {
-					if (!client.unlocked) {
-						wssSendDirectReply(client, 'NOPASS', 2);
+				if (jsonMessage.com) {
+					client.com = jsonMessage.com.toUpperCase().trim().replace(/(\r\n|\n|\r)/gm, "");
+					client.flag = jsonMessage.flag;
+					logger.debug(`Received from client ${client.clientId}: ${client.com}`);
+					if (client.com.charAt(0) == '/') {
+						client.val = jsonMessage.val;
+						// The command begins with / so it's an internal command
+						proceedInternalCommand(client);
 					} else {
-						let newCommands = client.com.split(';');
-						newCommands.forEach( (aCommand) => {
-							if (aCommand != "") {
-								let newCommandObj = {};
-								newCommandObj.client = client;
-								newCommandObj.command = aCommand;
-								newCommandObj.flag = jsonMessage.flag;
-								// Add to the queue & manage prioritization
-								(jsonMessage.pri) ? commandsQueue.unshift(newCommandObj) : commandsQueue.push(newCommandObj);
-								// Emit an event to proceed the queue if possible 
-								em.emit('SerialCommandArrivedEvent');
-							}
-						});
+						if (!client.unlocked) {
+							wssSendDirectReply(client, 'NOPASS', 2);
+						} else {
+							let newCommands = client.com.split(';');
+							newCommands.forEach( (aCommand) => {
+								if (aCommand != "") {
+									let newCommandObj = {};
+									newCommandObj.client = client;
+									newCommandObj.command = aCommand;
+									newCommandObj.flag = jsonMessage.flag;
+									// Add to the queue & manage prioritization
+									(jsonMessage.pri) ? commandsQueue.unshift(newCommandObj) : commandsQueue.push(newCommandObj);
+									// Emit an event to proceed the queue if possible 
+									em.emit('SerialCommandArrivedEvent');
+								}
+							});
 
+						}
 					}
+				} else {
+					logger.error(`'com' property from client ${client.clientId} message is empty. Ignored.`);
 				}
 			} catch (err) {
 				// Error when receiving a websocket message. Log & ignore.
@@ -336,12 +342,14 @@ function proceedInternalCommand(client) {
 			// Authentication is necessary ?
 			if (PASS) {
 				// Yes, check the password
-				if (PASS == jsonMessage.val) {
+				if (PASS == client.val) {
 					// Right password, unlock this client
 					client.unlocked = true;
+					client.val = undefined;
 					wssSendDirectReply(client, 'OK', 0);
 				} else {
 					// Fail, wrong password
+					client.val = undefined;
 					wssSendDirectReply(client, 'KO', 1);
 				}
 			}
