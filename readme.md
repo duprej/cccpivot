@@ -55,6 +55,7 @@ export CCCTIMEOUT=12				# Timeout waiting for serial port (in seconds)
 export CCCPASS=changeme				# Password for authenticate, leave empty for no protection
 export CCCMODEL=v3000 				# Internal model ID string ['v3000','v3200','v5000','v180m']
 export CCCLPID=1					# Left Player ID (0 for v180m model)
+export CCCPOWERGPIO=21				# GPIO number for power control (optional)
 ```
 
 * Step 2 - Launch the script as you want (nohup, &, >, 2>&1)
