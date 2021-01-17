@@ -18,7 +18,7 @@
     "start": "node pivot.js"
   },
   "dependencies": {
-    "logger": "0.0.1",
+    "simple-node-logger": "^18.12.24",
     "serialport": "^8.0.7",
     "sprintf-js": "^1.1.2",
     "ws": "^7.2.3"
