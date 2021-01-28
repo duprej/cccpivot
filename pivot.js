@@ -3,7 +3,7 @@ A Node.js application to send serial commands for Pioneer CAC autochangers by we
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.1.1";
+const VERSION	= "1.1.2";
 
 const PIVOTID 	= process.env.CCCID || 'ac0';					// Unique name of instance
 const DESC	 	= process.env.CCCDESC || 'No description';		// Description of the instance (string)
@@ -205,12 +205,12 @@ const main = () => {
 			try {
 				let jsonMessage=JSON.parse(e);
 				// Reformat the command
-				if (jsonMessage.com) {
-					client.com = jsonMessage.com.toUpperCase().trim().replace(/(\r\n|\n|\r)/gm, "");
-					client.flag = jsonMessage.flag;
+				if (jsonMessage.c) {
+					client.com = jsonMessage.c.toUpperCase().trim().replace(/(\r\n|\n|\r)/gm, "");
+					client.flag = jsonMessage.f;
 					logger.debug(`Received from client ${client.clientId}: ${client.com}`);
 					if (client.com.charAt(0) == '/') {
-						client.val = jsonMessage.val;
+						client.val = jsonMessage.v;
 						// The command begins with / so it's an internal command
 						proceedInternalCommand(client);
 					} else {
@@ -223,9 +223,9 @@ const main = () => {
 									let newCommandObj = {};
 									newCommandObj.client = client;
 									newCommandObj.command = aCommand;
-									newCommandObj.flag = jsonMessage.flag;
+									newCommandObj.flag = jsonMessage.f;
 									// Add to the queue & manage prioritization
-									(jsonMessage.pri) ? commandsQueue.unshift(newCommandObj) : commandsQueue.push(newCommandObj);
+									(jsonMessage.p) ? commandsQueue.unshift(newCommandObj) : commandsQueue.push(newCommandObj);
 									// Emit an event to proceed the queue if possible 
 									em.emit('SerialCommandArrivedEvent');
 								}
@@ -272,7 +272,7 @@ function wssSendSerialReply(answerToReply) {
     // Suppress fuzzy chars
     answerToReply = answerToReply.trim().replace(/[^\x00-\x7F]/g, "");
 	// Build response
-	let json = {'com' : currentCommand.command, 'flag' : currentCommand.flag, 'res' : answerToReply, 'err' : 0};
+	let json = {'c' : currentCommand.command, 'f' : currentCommand.flag, 'r' : answerToReply, 'e' : 0};
 	try {
 		// Check if client is still here
 		if (currentCommand.client.socket.readyState === currentCommand.client.socket.OPEN) {
@@ -293,7 +293,7 @@ function wssSendSerialReply(answerToReply) {
 
 /** Answer to client a direct (internal) command result (without serial) */
 function wssSendDirectReply(client, answerToReply, numError) {
-	let json = {'com' : client.com, 'flag' : client.flag, 'res' : answerToReply, 'err' : numError};
+	let json = {'c' : client.com, 'f' : client.flag, 'r' : answerToReply, 'e' : numError};
 	try {
 		client.socket.send(JSON.stringify(json));
 		logger.debug(`Replied to client ${client.clientId} (${client.com}): ${answerToReply}`);
@@ -304,7 +304,7 @@ function wssSendDirectReply(client, answerToReply, numError) {
 }
 
 function wssSendBroadcast(com, res, flag, err) {
-	let json = {'com' : com, 'flag' : flag, 'res' : res, 'err' : err};
+	let json = {'c' : com, 'f' : flag, 'r' : res, 'e' : err};
 	for (let [cliNum, client] of Object.entries(clients)) {
 		try {
 			// Check if client is still here
@@ -360,14 +360,14 @@ function proceedInternalCommand(client) {
 			// Authentication is necessary ?
 			if (PASS) {
 				// Yes, check the password
-				if (PASS == client.val) {
+				if (PASS == client.v) {
 					// Right password, unlock this client
 					client.unlocked = true;
-					client.val = undefined;
+					client.v = undefined;
 					wssSendDirectReply(client, 'OK', 0);
 				} else {
 					// Fail, wrong password
-					client.val = undefined;
+					client.v = undefined;
 					wssSendDirectReply(client, 'KO', 1);
 				}
 			}
@@ -475,13 +475,13 @@ function proceedSerialCommandsQueue() {
 				if (currentCommand.command.length > CAC_COMMAND_MAX_LENGTH) {
 					// Replies gently.
 					logger.debug( `Autochanger command '${currentCommand.command}' exceeds the maximum length! Code 7 returned to client.`);
-					json = {'com':currentCommand.command, 'flag':currentCommand.flag, 'res':'', 'err' : 7};
+					json = {'c':currentCommand.command, 'f':currentCommand.flag, 'r':'', 'e' : 7};
 					currentCommand.client.socket.send(JSON.stringify(json));
 				} else {
 					// Next, check if the serial port is OK or not ?
 					if (serialPortOK == false) {
 						logger.debug("Serial port is not OK! Code 4 returned to client.");
-						json = {'com':currentCommand.command, 'flag':currentCommand.flag, 'res':'', 'err' : 4};
+						json = {'c':currentCommand.command, 'f':currentCommand.flag, 'r':'', 'e' : 4};
 						currentCommand.client.socket.send(JSON.stringify(json));
 					} else {
 						logger.debug(`Executing ${currentCommand.command} ...`);
@@ -502,7 +502,7 @@ function serialTimeoutExpired() {
 	hrend = process.hrtime(hrstart);
 	try {
 		if (currentCommand.client.socket.readyState === currentCommand.client.socket.OPEN) {
-			json = {'com' : currentCommand.command, 'flag' : currentCommand.flag, 'res' : '', 'err' : 3};
+			json = {'c' : currentCommand.command, 'f' : currentCommand.flag, 'r' : '', 'e' : 3};
 			currentCommand.client.socket.send(JSON.stringify(json));
 		} else {
 			logger.debug(`Client ${currentCommand.client.clientId} has closed the connection before sending the response.`);
