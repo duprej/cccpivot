@@ -234,7 +234,7 @@ const main = () => {
 						}
 					}
 				} else {
-					logger.error(`'com' property from client ${client.clientId} message is empty. Ignored.`);
+					logger.error(`'c' property from client ${client.clientId} message is empty. Ignored.`);
 				}
 			} catch (err) {
 				// Error when receiving a websocket message. Log & ignore.
