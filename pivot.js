@@ -3,7 +3,7 @@ A Node.js application to send serial commands for Pioneer CAC autochangers by we
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.1.2";
+const VERSION	= "1.1.3";
 
 const PIVOTID 	= process.env.CCCID || 'ac0';					// Unique name of instance
 const DESC	 	= process.env.CCCDESC || 'No description';		// Description of the instance (string)
@@ -460,8 +460,7 @@ function powerOnOffChanger(command, client) {
 
 /** Processing the commands queue (to send to the autochanger) */
 function proceedSerialCommandsQueue() {
-	/* If processing is already in progress 
-	and the serial port is already occupied by the execution
+	/* If processing is already in progress and the serial port is already occupied by the execution
 	of a previous command wait the next event firing */
 	if (processingQueue == false && serialLock == false) {
 		// Check if the queue is not empty
@@ -491,7 +490,11 @@ function proceedSerialCommandsQueue() {
 						hrstart = process.hrtime();
 					}
 				}
-			}
+			} else {
+                // Continue processing the queue to purge the command stock...
+                processingQueue = false;	
+				proceedSerialCommandsQueue();
+            }
 		}
 		processingQueue = false;
 	}
