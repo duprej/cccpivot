@@ -9,13 +9,14 @@ Pioneer CAC jukeboxes are designed to be connected to a computer with a serial c
 ## How it works ?
 
 CCCpivot is a simple Node.js script witch provides a TCP server to pass commands (via JSON messages) to a Pioneer CAC jukebox connected on a serial port and sends the result. One instance of the Node.js script is necessary for each jukebox (each serial connection). Many instances have to be launched if you have many autochangers to control. Each instance is separated with his own serial port and his own TCP port.
+
 |Instance|Description|Serial port|TCP port
----|---|---|---
+|---|---|---|---
 |Instance 1|Autochanger 1|/dev/ttyUSB0|port 8000
 |Instance 2|Autochanger 2|/dev/ttyUSB1|port 8001
 |Instance 3|Autochanger 3|/dev/ttyUSB2|port 8002
 
-On Linux, manage CCCpivot processes with the [CCClauncher Perl script](https://github.com/duprej/ccclauncher). 
+On Linux, manage CCCpivot processes with the [CCClauncher Perl script](https://github.com/duprej/ccclauncher).
 But it can be used without (standalone).
 
 ## Benefits?
@@ -34,7 +35,7 @@ When I purchased my two CAC-V3000 autochangers I planned to develop a traditionn
 ## Files
 
 |File|Description
----|---
+|---|---
 |/opt/cccpivot/|Application directory
 |/opt/cccpivot/pivot.js|Node.js server script. (Needs environment variables to be set before launch)
 |/opt/cccpivot/doc/cccPivotCommands.ods|LibreOffice spreadsheet describing JSON websocket messages protocol
@@ -45,18 +46,18 @@ When I purchased my two CAC-V3000 autochangers I planned to develop a traditionn
 * Step 1 - Set environment - export these CCCxxxxx variables:
 
 |Export command|Description
----|---
-export CCCID='jb1'|Unique name of instance (string)
-export CCCDESC='Studio 3 - Left'|Description of the instance (string)
-export CCCWSSPORT=8000|Port used for WebSocket Server (Serial port commands)
-export CCCSERIAL='/dev/ttyUSB1'|Serial port to be used /dev/ttyXXXX
-export CCCBAUDS=9600|Serial port speed (4800 or 9600)
-export CCCDEBUG=true|Trace all clients activity (commands) for debug
-export CCCTIMEOUT=12|Timeout waiting for serial port (in seconds)
-export CCCPASS=changeme|Password for authenticate, leave empty for no protection
-export CCCMODEL=v3000|Internal model ID string ['v3000','v3200','v5000','v180m']
-export CCCLPID=1|Left Player ID (0 for v180m model)
-export CCCPOWERGPIO=21|GPIO number for power control (optional)
+|---|---
+|export CCCID='jb1'|Unique name of instance (string)
+|export CCCDESC='Studio 3 - Left'|Description of the instance (string)
+|export CCCWSSPORT=8000|Port used for WebSocket Server (Serial port commands)
+|export CCCSERIAL='/dev/ttyUSB1'|Serial port to be used /dev/ttyXXXX
+|export CCCBAUDS=9600|Serial port speed (4800 or 9600)
+|export CCCDEBUG=true|Trace all clients activity (commands) for debug
+|export CCCTIMEOUT=12|Timeout waiting for serial port (in seconds)
+|export CCCPASS=changeme|Password for authenticate, leave empty for no protection
+|export CCCMODEL=v3000|Internal model ID string ['v3000','v3200','v5000','v180m']
+|export CCCLPID=1|Left Player ID (0 for v180m model)
+|export CCCPOWERGPIO=21|GPIO number for power control (optional)
 
 * Step 2 - Launch the script as you want (nohup, &, >, 2>&1)
 node /opt/cccpivot/pivot.js
@@ -88,7 +89,7 @@ sudo -- bash  -c 'cd /opt;git clone https://github.com/duprej/cccpivot'
 Install dependencies:
 
 ```console
-sudo -- bash  -c 'cd /opt/cccpivot/;npm install --unsafe-perm'
+sudo -- bash  -c 'cd /opt/cccpivot/;npm install'
 ```
 
 Check:
@@ -103,12 +104,12 @@ This is a more complicated way. Not really needed for home/local environment.
 Export theses additionnal variables (WS -> WSS):
 
 |Export command|Description
----|---
-export CCCSSL=1|Use SSL/TLS (HTTPS)
-export CCCSSLDIR=/opt/cccpivot/|Directory of .pem files
-export CCCSSLCERT=cert.pem|Certificate filename
-export CCCSSLKEY=key.pem|Private key filename
-export CCCPASSPHR=cccpivot|Passphrase for private key
+|---|---
+|export CCCSSL=1|Use SSL/TLS (HTTPS)
+|export CCCSSLDIR=/opt/cccpivot/|Directory of .pem files
+|export CCCSSLCERT=cert.pem|Certificate filename
+|export CCCSSLKEY=key.pem|Private key filename
+|export CCCPASSPHR=cccpivot|Passphrase for private key
 
 Generate self-signed certificate for 2 years:
 

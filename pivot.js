@@ -3,7 +3,7 @@ A Node.js application to send serial commands for Pioneer CAC autochangers by we
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.1.3";
+const VERSION	= "1.1.4";
 
 const PIVOTID 	= process.env.CCCID || 'ac0';					// Unique name of instance
 const DESC	 	= process.env.CCCDESC || 'No description';		// Description of the instance (string)
