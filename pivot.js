@@ -36,7 +36,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import { sprintf } from 'sprintf-js';
 import * as os from 'os';
 import SimpleNodeLogger from 'simple-node-logger';
-let logger = new SimpleNodeLogger.createSimpleLogger();
+let log = new SimpleNodeLogger.createSimpleLogger();
 import { EventEmitter } from "events";
 let em = new EventEmitter();
 import * as fs from 'fs';
