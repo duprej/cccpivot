@@ -146,7 +146,7 @@ Simply change /dev/ttyUSBx device name with COMx Windows names (COM5, COM6, ...)
 
 ```console
 C:\cccpivot>start.bat
-19:28:31.646 INFO  Starting CCCpivot 1.1.2...
+19:28:31.646 INFO  Starting CCCpivot 1.1.5...
 19:28:31.647 INFO  Instance: ac1 - My jukebox
 19:28:31.647 INFO  Listening port for websockets: 8000
 19:28:31.647 INFO  TLS: disabled
@@ -162,3 +162,11 @@ C:\cccpivot>start.bat
 19:28:31.659 INFO  CCCpivot is ready!
 19:28:31.721 INFO  The serial port COM9 has been successfully opened!
 ```
+
+## Problems
+
+* Problem with 'simple-node-logger' library : [Deprecated 'util' library, file need to be patched manually if error at npm installation](https://github.com/darrylwest/simple-node-logger/pull/90/commits/f4a5647272db2b66565de100ae528b0eef5460be)
+
+## TO-DO / Backlog
+
+* Need to replace the logging library, 'simple-node-logger' is no longer maintened, Winston ?

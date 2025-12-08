@@ -7,7 +7,7 @@
   "homepage": "https://github.com/duprej/cccpivot/",
   "author": "Jonathan Dupré (http://www.jonathandupre.fr)",
   "engines": {
-    "node": ">=20.x"
+    "node": ">=22.x"
   },
   "repository": {
     "type": "git",

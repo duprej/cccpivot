@@ -1,14 +1,15 @@
 /* CCCpivot - CAC Control Center "pivot" module
-A Node.js application to send serial commands for Pioneer CAC autochangers by websocket messages. */
+   A Node.js application to send serial commands for Pioneer CAC autochangers by websocket messages. */
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.1.4";
+const VERSION	= "1.1.5";
 
+// Basic
 const PIVOTID 	= process.env.CCCID || 'ac0';					// Unique name of instance
 const DESC	 	= process.env.CCCDESC || 'No description';		// Description of the instance (string)
 const WSSPORT 	= parseInt(process.env.CCCWSSPORT) || 8000;		// Port used for WebSocket
-const SERIAL 	= process.env.CCCSERIAL || '/dev/ttyUSB0';		// Serial port to be used (/dev/ttyXXXX or COMx)
+const SERIAL 	= process.env.CCCSERIAL || '/dev/ttyAMA0';		// Serial port to be used (/dev/ttyAMAX, /dev/ttyUSBX or COMx)
 const BAUDS 	= parseInt(process.env.CCCBAUDS) || 9600;		// Serial port speed in bauds (4800 or 9600)
 const DEBUG 	= process.env.CCCDEBUG || false;				// Trace all client's activity (heavy debug)
 const TIMEOUT 	= parseInt(process.env.CCCTIMEOUT) || 10;		// Timeout waiting for serial port (in seconds)
@@ -16,6 +17,7 @@ const PASS 		= process.env.CCCPASS || '';					// Password for authentification
 const MODEL 	= process.env.CCCMODEL || '';					// Internal Autochanger model ID
 const LPID 		= parseInt(process.env.CCCLPID);				// Left Player ID (0 or more)
 const POWERGPIO	= parseInt(process.env.CCCPOWERGPIO) || 0;		// GPIO number on Raspberry Pi for AC changer relay (0 = disabled default)
+
 // TLS additions
 const USESSL	= parseInt(process.env.CCCSSL) || 0;			// SSL enabled or disabled (default)
 const CERTFILE	= process.env.CCCSSLCERT || "cert.pem";			// Certificate filename
@@ -23,23 +25,23 @@ const SSLDIR	= process.env.CCCSSLDIR || "/opt/cccpivot/";	// Dir. of certificate
 const KEYFILE	= process.env.CCCSSLKEY || "key.pem";			// Private key filename
 const PASSPHR	= process.env.CCCPASSPHR || "cccpivot";			// Passphrase for private key
 
-
 // UART options (fixed too)
-const SERIAL_OPEN_OPTIONS = {autoOpen: false, baudRate: BAUDS, dataBits: 8, parity: 'none', stopBits: 1};
+const SERIAL_OPEN_OPTIONS = {path: SERIAL, autoOpen: false, baudRate: BAUDS, dataBits: 8, parity: 'none', stopBits: 1};
 // Maximum Pioneer Autochanger command line length
 const CAC_COMMAND_MAX_LENGTH = 20;
 
 // Required core/packages/modules & global objects
-let WebSocketServerMod = require("ws").Server;
-let SerialPortMod = require('serialport');
-let sprintf = require("sprintf-js").sprintf;
-let os = require('os');
-let logger = require('simple-node-logger').createSimpleLogger();
-let events = require('events');
-let em = new events.EventEmitter();
-let fs = require('fs');
-let https = require('https');
-let exec = require('child_process').exec; 
+import  { SerialPort } from 'serialport';
+import WebSocket, { WebSocketServer } from 'ws';
+import { sprintf } from 'sprintf-js';
+import * as os from 'os';
+import SimpleNodeLogger from 'simple-node-logger';
+let logger = new SimpleNodeLogger.createSimpleLogger();
+import { EventEmitter } from "events";
+let em = new EventEmitter();
+import * as fs from 'fs';
+import * as https from 'https';
+import { exec } from 'node:child_process';
 
 // Global vars
 let httpsServer = null;				// Object - HTTPS Server (Used only in TLS mode)
@@ -69,10 +71,113 @@ if (USESSL == 1) {
 }
 
 // ################################# Main program #################################
-// ################################# Main program #################################
-// ################################# Main program #################################
 
 const main = () => {
+	// Enable debug or info only
+	if (DEBUG == '1') {
+		log.setLevel('debug');
+	} else {
+		log.setLevel('info');
+	}
+	// Display at startup
+	log.info(`Starting ${APPNAME} ${VERSION}...`);
+	log.info(`Instance: ${PIVOTID} - ${DESC}`);
+	log.info(`Listening port for websockets: ${WSSPORT}`);
+	log.info("TLS: "+((USESSL == 1) ? 'enabled' : 'disabled'));
+	log.info(sprintf("Serial port: %s",SERIAL));
+	log.info(sprintf("Baud rate: %s",BAUDS));
+	log.info("Debug: "+((DEBUG == '1') ? 'enabled' : 'disabled'));
+	log.info(sprintf("Timeout: %s second(s)",TIMEOUT));
+	log.info("Password: "+((PASS) ? 'enabled' : 'disabled'));
+	log.info(`Autochanger model: ${MODEL}`);
+	log.info(`Left Player ID: ${LPID}`);
+	log.info(`Power GPIO: ${POWERGPIO}`);
+	// Program initialization (instancing core objects)
+	// If SSL so build the https server
+	if (USESSL == 1) {
+		try {
+			httpsServer = https.createServer(credentials);
+			httpsServer.listen(WSSPORT);
+		} catch(error) {
+			log.error('Unable to start the HTTPS server! Exiting...');
+			log.fatal(error);
+			console.log('Exit 3');
+			process.exit(3);
+		}
+	}
+	// Now the websocket server
+	try {
+		if (USESSL == 1) {
+			wss = new WebSocketServer({server:httpsServer});
+		} else {
+			wss = new WebSocketServer({port:WSSPORT});
+		}
+		log.info('Websocket TCP port successfully opened.');
+	}
+	catch(error) {
+		log.error('Unable to start the WebSocket server! Exiting...');
+		log.fatal(error);
+		console.log('Exit 1');
+		process.exit(1);
+	}
+	// Now the serial port object
+	try {
+		serial = new SerialPort(SERIAL_OPEN_OPTIONS);
+		serial.open( (err) => {
+			if (err) {
+				log.error(`Unable to access the serial port ${SERIAL}!`);
+			} else {
+				return 0;
+			}});
+		serial.on('error', function(err) {
+			serialPortOK = false;
+			log.info('Serial port error.');
+			log.error(err.message);
+		});
+		serial.on('open', () => {
+			log.info(`The serial port ${SERIAL} has been successfully opened!`);
+			serialPortOK = true;
+			wssSendBroadcast('/SERIALOK', serialPortOK, 0, 0);
+		});
+		serial.on('close', () => {
+			serialPortOK = false;
+			if (normalClose) {
+				// SIGTERM normal case
+				log.info(`The serial port ${SERIAL} has been successfully closed!`);
+			} else {
+				// Unexpected serial device closure (USB disconnected ?). 
+				// Alert clients + start resilience timer.
+				log.info(`The serial port ${SERIAL} is lost.`);
+				wssSendBroadcast('/SERIALOK', serialPortOK, 0, 10);
+				serialRecoTimer = setInterval(tryReOpenSerialPort, serialRecoInter);
+			}
+		});
+	}
+	catch(error) {
+		log.error(`Problem with the serial port ${SERIAL}! Exiting...`);
+		log.fatal(error);
+		console.log('Exit 2');
+		process.exit(2);
+	}
+	/* Callback function on serial data arrival */
+	serial.on('data', (data) => {
+		let s = data.toString();
+		// Read buffer
+		for (let i = 0; i < s.length; i++) {
+			let c = s.charAt(i);
+			// CR = Response from autochanger is complete
+			if (c == "\r") {
+				hrend = process.hrtime(hrstart);
+				log.debug(`Read from serial: ${readFromSerial} in ${Math.round(hrend[1] / 1000000)}ms`);
+				// Serial read terminated - Emit an event to send the resppnse to client.
+				em.emit('SerialReadEvent', readFromSerial);
+				readFromSerial = "";
+			} else {
+				readFromSerial += c;
+			}
+		}
+	});
+	
 	// Init events
 	// When the jukebox answers on the serial port, send the reply via websocket.
 	em.on('SerialReadEvent', (data) => {
@@ -90,107 +195,6 @@ const main = () => {
 	em.on('SerialCommandArrivedEvent', () => {
 		proceedSerialCommandsQueue();
 	});
-	// Enable debug or info only
-	if (DEBUG == 1) {
-		logger.setLevel('debug');
-	} else {
-		logger.setLevel('info');
-	}
-	// Display at startup
-	logger.info(`Starting ${APPNAME} ${VERSION}...`);
-	logger.info(`Instance: ${PIVOTID} - ${DESC}`);
-	logger.info(`Listening port for websockets: ${WSSPORT}`);
-	logger.info("TLS: "+((USESSL == 1) ? 'enabled' : 'disabled'));
-	logger.info(sprintf("Serial port: %s",SERIAL));
-	logger.info(sprintf("Baud rate: %s",BAUDS));
-	logger.info("Debug: "+((DEBUG == 1) ? 'enabled' : 'disabled'));
-	logger.info(sprintf("Timeout: %s second(s)",TIMEOUT));
-	logger.info("Password: "+((PASS) ? 'enabled' : 'disabled'));
-	logger.info(`Autochanger model: ${MODEL}`);
-	logger.info(`Left Player ID: ${LPID}`);
-	logger.info(`Power GPIO: ${POWERGPIO}`);
-	// Program initialization (instancing core objects)
-	// If SSL so build the https server
-	if (USESSL == 1) {
-		try {
-			httpsServer = https.createServer(credentials);
-			httpsServer.listen(WSSPORT);
-		} catch(error) {
-			logger.error('Unable to start the HTTPS server! Exiting...');
-			logger.fatal(error);
-			process.exit(3);
-		}
-	}
-	// Now the websocket server
-	try {
-		if (USESSL == 1) {
-			wss = new WebSocketServerMod({server:httpsServer});
-		} else {
-			wss = new WebSocketServerMod({port:WSSPORT});
-		}
-		logger.info('Websocket TCP port successfully opened.');
-	}
-	catch(error) {
-		logger.error('Unable to start the WebSocket server! Exiting...');
-		logger.fatal(error);
-		process.exit(1);
-	}
-	// Now the serial port object
-	try {
-		serial = new SerialPortMod(SERIAL, SERIAL_OPEN_OPTIONS);
-		serial.open( (err) => {
-			if (err) {
-				logger.error(`Unable to access the serial port ${SERIAL}!`);
-			} else {
-				return 0;
-			}});
-		serial.on('error', function(err) {
-			serialPortOK = false;
-			logger.info('Serial port error.');
-			logger.error(err.message);
-		});
-		serial.on('open', () => {
-			logger.info(`The serial port ${SERIAL} has been successfully opened!`);
-			serialPortOK = true;
-			wssSendBroadcast('/SERIALOK', serialPortOK, 0, 0);
-		});
-		serial.on('close', () => {
-			serialPortOK = false;
-			if (normalClose) {
-				// SIGTERM normal case
-				logger.info(`The serial port ${SERIAL} has been successfully closed!`);
-			} else {
-				// Unexpected serial device closure (USB disconnected ?). 
-				// Alert clients + start resilience timer.
-				logger.info(`The serial port ${SERIAL} is lost.`);
-				wssSendBroadcast('/SERIALOK', serialPortOK, 0, 10);
-				serialRecoTimer = setInterval(tryReOpenSerialPort, serialRecoInter);
-			}
-		});
-	}
-	catch(error) {
-		logger.error(`Problem with the serial port ${SERIAL}! Exiting...`);
-		logger.fatal(error);
-		process.exit(2);
-	}
-	/* Callback function on serial data arrival */
-	serial.on('data', (data) => {
-		s = data.toString();
-		// Read buffer
-		for (let i = 0; i < s.length; i++) {
-			c = s.charAt(i);
-			// CR = Response from autochanger is complete
-			if (c == "\r") {
-				hrend = process.hrtime(hrstart);
-				logger.debug(`Read from serial: ${readFromSerial} in ${Math.round(hrend[1] / 1000000)}ms`);
-				// Serial read terminated - Emit an event to send the resppnse to client.
-				em.emit('SerialReadEvent', readFromSerial);
-				readFromSerial = "";
-			} else {
-				readFromSerial += c;
-			}
-		}
-	});
 
 	wss.on('connection', function connecting(ws) {
 		let client = new Object();
@@ -200,7 +204,7 @@ const main = () => {
 		client.unlocked = (PASS == '');
 		wssSendBroadcast('/COUNTCLI', Object.keys(clients).length, 0, 0);
 		clientIDCounter++;
-		logger.debug(`New client ${String(client.clientId)} comes.`)
+		log.debug(`New client ${String(client.clientId)} comes.`)
 		ws.on("message", (e) => {
 			try {
 				let jsonMessage=JSON.parse(e);
@@ -208,7 +212,7 @@ const main = () => {
 				if (jsonMessage.c) {
 					client.com = jsonMessage.c.toUpperCase().trim().replace(/(\r\n|\n|\r)/gm, "");
 					client.flag = jsonMessage.f;
-					logger.debug(`Received from client ${client.clientId}: ${client.com}`);
+					log.debug(`Received from client ${client.clientId}: ${client.com}`);
 					if (client.com.charAt(0) == '/') {
 						client.val = jsonMessage.v;
 						// The command begins with / so it's an internal command
@@ -230,41 +234,38 @@ const main = () => {
 									em.emit('SerialCommandArrivedEvent');
 								}
 							});
-
 						}
 					}
 				} else {
-					logger.error(`'c' property from client ${client.clientId} message is empty. Ignored.`);
+					log.error(`'c' property from client ${client.clientId} message is empty. Ignored.`);
 				}
 			} catch (err) {
 				// Error when receiving a websocket message. Log & ignore.
-				logger.error(err);
+				log.error(err);
 			}
 		})
 		ws.on("close", function closing() {
 			delete clients[client.clientId];
-			logger.debug(`Client ${String(client.clientId)} gone.`)
-			logger.debug(`Remaining clients: ${String(Object.keys(clients).length)}.`)
+			log.debug(`Client ${String(client.clientId)} gone.`)
+			log.debug(`Remaining clients: ${String(Object.keys(clients).length)}.`)
 			wssSendBroadcast('/COUNTCLI', Object.keys(clients).length, 0, 0);
 			});
 	});
 	// Trap SIGTERM signal to terminate process properly.
 	process.on('SIGTERM', function () {
-		logger.info("SIGTERM received.");
-		logger.info(`${APPNAME} is closing...`);
+		log.info("SIGTERM received.");
+		log.info(`${APPNAME} is closing...`);
 		normalClose = true;
 		serial.close();
 	  	wss.close(function () {
-		logger.info(`Good bye!`);
+		log.info(`Good bye!`);
 	    process.exit(0);
 	  });
 	});
-	logger.info(`${APPNAME} is ready!`);
+	log.info(`${APPNAME} is ready!`);
 }
 main();
 
-// ################################# Reply Functions #################################
-// ################################# Reply Functions #################################
 // ################################# Reply Functions #################################
 
 /** Answer to client the result of a autochanger command (from serial) */
@@ -277,12 +278,12 @@ function wssSendSerialReply(answerToReply) {
 		// Check if client is still here
 		if (currentCommand.client.socket.readyState === currentCommand.client.socket.OPEN) {
 			currentCommand.client.socket.send(JSON.stringify(json));
-			logger.debug(`Replied to client ${currentCommand.client.clientId} about ${currentCommand.command}: ${answerToReply}`);
+			log.debug(`Replied to client ${currentCommand.client.clientId} about ${currentCommand.command}: ${answerToReply}`);
 		} else {
-			logger.debug(`Client ${currentCommand.client.clientId} has closed the connection before sending the response.`);
+			log.debug(`Client ${currentCommand.client.clientId} has closed the connection before sending the response.`);
 		}
 	} catch (err) {
-		logger.error(err);
+		log.error(err);
 	}
 	// Release the serial port & clean timeout timer
 	serialLock = false;
@@ -296,10 +297,10 @@ function wssSendDirectReply(client, answerToReply, numError) {
 	let json = {'c' : client.com, 'f' : client.flag, 'r' : answerToReply, 'e' : numError};
 	try {
 		client.socket.send(JSON.stringify(json));
-		logger.debug(`Replied to client ${client.clientId} (${client.com}): ${answerToReply}`);
+		log.debug(`Replied to client ${client.clientId} (${client.com}): ${answerToReply}`);
 	} catch (err) {
 		// Error can happen when sending a websocket message. Log & ignore. Often violent client disconnection.
-		logger.error(err);
+		log.error(err);
 	}
 }
 
@@ -310,18 +311,16 @@ function wssSendBroadcast(com, res, flag, err) {
 			// Check if client is still here
 			if (client.socket.readyState === client.socket.OPEN) {
 				client.socket.send(JSON.stringify(json));
-				logger.debug(`Broadcast message send to client ${client.clientId} about ${com}: ${res}`);
+				log.debug(`Broadcast message send to client ${client.clientId} about ${com}: ${res}`);
 			} else {
-				logger.debug(`Client ${client.clientId} has closed the connection before broadcast.`);
+				log.debug(`Client ${client.clientId} has closed the connection before broadcast.`);
 			}
 		} catch (err) {
-			logger.error(err);
+			log.error(err);
 		}
 	}
 }
 
-// ################################# Internal Commands Functions #################################
-// ################################# Internal Commands Functions #################################
 // ################################# Internal Commands Functions #################################
 
 /** Called to handle an internal command */
@@ -404,7 +403,7 @@ function proceedInternalCommand(client) {
 			if (POWERGPIO != 0) {
 				exec('cat /sys/class/gpio/gpio' + POWERGPIO + '/value', (error, stdout, stderr) => {
 				if (error || (stderr !=  "")) { 
-					logger.warn(`Exec error GPIO: ${error} - ${stderr}`);
+					log.warn(`Exec error GPIO: ${error} - ${stderr}`);
 					wssSendDirectReply(savedClient, error, 10);
 				} else {
 					wssSendDirectReply(savedClient, stdout.charAt(0), 0);
@@ -415,7 +414,6 @@ function proceedInternalCommand(client) {
 			break;
 		case 'POWERON':
 			powerOnOffChanger('POWERON', client);
-			
 			break;
 		case 'POWEROFF':
 			powerOnOffChanger('POWEROFF', client);
@@ -439,7 +437,7 @@ function powerOnOffChanger(command, client) {
 			// Only if 'Power pin' is set (<> 0) obviously
 			exec('echo "' + value + '" > /sys/class/gpio/gpio' + POWERGPIO + '/value', (error, stdout, stderr) => {
 			if (error || (stderr !=  "")) { 
-				logger.warn(`Exec error GPIO: ${error} - ${stderr}`);
+				log.warn(`Exec error GPIO: ${error} - ${stderr}`);
 				wssSendDirectReply(savedClient, error, 10);
 			} else {
 				// All is ok, send every clients that worked
@@ -454,8 +452,6 @@ function powerOnOffChanger(command, client) {
 	}
 }
 
-// ################################# Changer/Serial Commands Functions #################################
-// ################################# Changer/Serial Commands Functions #################################
 // ################################# Changer/Serial Commands Functions #################################
 
 /** Processing the commands queue (to send to the autochanger) */
@@ -473,17 +469,17 @@ function proceedSerialCommandsQueue() {
 				// OK, now check command maximum length
 				if (currentCommand.command.length > CAC_COMMAND_MAX_LENGTH) {
 					// Replies gently.
-					logger.debug( `Autochanger command '${currentCommand.command}' exceeds the maximum length! Code 7 returned to client.`);
-					json = {'c':currentCommand.command, 'f':currentCommand.flag, 'r':'', 'e' : 7};
+					log.debug( `Autochanger command '${currentCommand.command}' exceeds the maximum length! Code 7 returned to client.`);
+					let json = {'c':currentCommand.command, 'f':currentCommand.flag, 'r':'', 'e' : 7};
 					currentCommand.client.socket.send(JSON.stringify(json));
 				} else {
 					// Next, check if the serial port is OK or not ?
 					if (serialPortOK == false) {
-						logger.debug("Serial port is not OK! Code 4 returned to client.");
-						json = {'c':currentCommand.command, 'f':currentCommand.flag, 'r':'', 'e' : 4};
+						log.debug("Serial port is not OK! Code 4 returned to client.");
+						let json = {'c':currentCommand.command, 'f':currentCommand.flag, 'r':'', 'e' : 4};
 						currentCommand.client.socket.send(JSON.stringify(json));
 					} else {
-						logger.debug(`Executing ${currentCommand.command} ...`);
+						log.debug(`Executing ${currentCommand.command} ...`);
 						serialLock = true; // Lock the serial port
 						timeoutSerialTimer = setTimeout(serialTimeoutExpired, TIMEOUT * 1000); // Enable the timeout timer
 						serial.write(currentCommand.command + '\r');
@@ -505,16 +501,16 @@ function serialTimeoutExpired() {
 	hrend = process.hrtime(hrstart);
 	try {
 		if (currentCommand.client.socket.readyState === currentCommand.client.socket.OPEN) {
-			json = {'c' : currentCommand.command, 'f' : currentCommand.flag, 'r' : '', 'e' : 3};
+			let json = {'c' : currentCommand.command, 'f' : currentCommand.flag, 'r' : '', 'e' : 3};
 			currentCommand.client.socket.send(JSON.stringify(json));
 		} else {
-			logger.debug(`Client ${currentCommand.client.clientId} has closed the connection before sending the response.`);
+			log.debug(`Client ${currentCommand.client.clientId} has closed the connection before sending the response.`);
 		}
 	} catch (err) {
 		// Error can happen when sending a websocket message. Log & ignore. Often violent client disconnection.
-		logger.error(err);
+		log.error(err);
 	}
-	logger.debug(sprintf('Timeout of %1$d seconds reached for client %2$d. Command %1$s aborted.',TIMEOUT,currentCommand.client.clientId,currentCommand.command));
+	log.debug(sprintf('Timeout of %1$d seconds reached for client %2$d. Command %1$s aborted.',TIMEOUT,currentCommand.client.clientId,currentCommand.command));
 	serialLock = false;
 	// Emit events the serial response was send and now it's ready for proceed a new command in the queue
 	em.emit('SerialTimeOutExpiredEvent');
