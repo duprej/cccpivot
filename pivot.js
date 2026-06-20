@@ -3,7 +3,7 @@
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.1.5";
+const VERSION	= "1.1.6";
 
 // Basic
 const PIVOTID 	= process.env.CCCID || 'ac0';					// Unique name of instance
