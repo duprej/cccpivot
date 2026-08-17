@@ -1,7 +1,7 @@
 {
   "name": "cccpivot",
   "description": "CCCpivot provides communication with Pioneer CAC autochangers in web browsers through a websocket.",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "license": "AGPL-3.0",
   "type": "module",
   "main": "pivot.js",
@@ -21,8 +21,11 @@
   "dependencies": {
     "node-gyp": "^12.1.0",
     "serialport": "^13.0.0",
-    "simple-node-logger": "^21.8.12",
+    "simple-node-logger-se": "^21.8.19",
     "sprintf-js": "^1.1.3",
     "ws": "^8.18.3"
+  },
+  "allowScripts": {
+    "serialport@13.0.0": true
   }
 }

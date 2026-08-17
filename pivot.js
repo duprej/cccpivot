@@ -3,7 +3,7 @@
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.1.6";
+const VERSION	= "1.1.7";
 
 // Basic
 const PIVOTID 	= process.env.CCCID || 'ac0';					// Unique name of instance
@@ -35,7 +35,7 @@ import  { SerialPort } from 'serialport';
 import WebSocket, { WebSocketServer } from 'ws';
 import { sprintf } from 'sprintf-js';
 import * as os from 'os';
-import SimpleNodeLogger from 'simple-node-logger';
+import SimpleNodeLogger from 'simple-node-logger-se';
 let log = new SimpleNodeLogger.createSimpleLogger();
 import { EventEmitter } from "events";
 let em = new EventEmitter();
