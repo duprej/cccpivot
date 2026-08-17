@@ -162,11 +162,3 @@ C:\cccpivot>start.bat
 19:28:31.659 INFO  CCCpivot is ready!
 19:28:31.721 INFO  The serial port COM9 has been successfully opened!
 ```
-
-## Problems
-
-* Problem with 'simple-node-logger' library : [Deprecated 'util' library, file need to be patched manually if error at npm installation](https://github.com/darrylwest/simple-node-logger/pull/90/commits/f4a5647272db2b66565de100ae528b0eef5460be)
-
-## TO-DO / Backlog
-
-* Need to replace the logging library, 'simple-node-logger' is no longer maintened, Winston ?
