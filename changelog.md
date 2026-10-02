@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] - 2026-10-02
+
+### Changed
+
+* Displays the Node.js runtime version in the log at startup
+* Using the ReadlineParser stream instead of manual detection of OEM : find the \r char)
+* Serial library package upgraded from abandonned serialport to serialport-rs to be compatible with Node 26. Worked on Node 24 (LTS) & 25 but fails on Node 26, but regression in the runtime :
+  * [Unable to start Z2M on Node.js versions after v26.2 #32580](https://github.com/Koenkk/zigbee2mqtt/issues/32580)
+  * [Serial communications not progressing event loop when other tasks present#3148](https://github.com/serialport/node-serialport/issues/3148)
+  * [serialport-rs for Node.js](https://www.npmjs.com/package/serialport-rs)
+
 ## [1.1.7] - 2026-08-17
 
 ### Changed

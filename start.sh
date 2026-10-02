@@ -1,6 +1,6 @@
 #Step 1 - Set environment vars
 export CCCID=ac1
-export CCCDESC=My jukebox
+export CCCDESC="My jukebox"
 export CCCWSSPORT=8000
 export CCCSERIAL=/dev/ttyUSB0
 export CCCBAUDS=9600

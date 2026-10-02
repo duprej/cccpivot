@@ -3,7 +3,7 @@
 
 // Constants & script environment
 const APPNAME	= "CCCpivot";
-const VERSION	= "1.1.7";
+const VERSION	= "1.1.8";
 
 // Basic
 const PIVOTID 	= process.env.CCCID || 'ac0';					// Unique name of instance
@@ -31,7 +31,7 @@ const SERIAL_OPEN_OPTIONS = {path: SERIAL, autoOpen: false, baudRate: BAUDS, dat
 const CAC_COMMAND_MAX_LENGTH = 20;
 
 // Required core/packages/modules & global objects
-import  { SerialPort } from 'serialport';
+import { SerialPort, ReadlineParser } from 'serialport-rs';
 import WebSocket, { WebSocketServer } from 'ws';
 import { sprintf } from 'sprintf-js';
 import * as os from 'os';
@@ -61,6 +61,7 @@ let currentCommand = undefined;		// Object - Current proceeded command (client +
 let hrstart, hrend;					// Serial performance mesurement
 let serialRecoTimer = undefined;	// Timer object to retry serial port connection
 let serialRecoInter = 1000;			// Integer - Timer interval in ms for trying reconnect serial device
+let parser = undefined;
 
 // TLS initialization
 let privateKey, certificate, credentials;
@@ -81,6 +82,7 @@ const main = () => {
 	}
 	// Display at startup
 	log.info(`Starting ${APPNAME} ${VERSION}...`);
+	log.info(`Node version : ${process.version}`);
 	log.info(`Instance: ${PIVOTID} - ${DESC}`);
 	log.info(`Listening port for websockets: ${WSSPORT}`);
 	log.info("TLS: "+((USESSL == 1) ? 'enabled' : 'disabled'));
@@ -135,6 +137,7 @@ const main = () => {
 			log.error(err.message);
 		});
 		serial.on('open', () => {
+			//serial.resume();
 			log.info(`The serial port ${SERIAL} has been successfully opened!`);
 			serialPortOK = true;
 			wssSendBroadcast('/SERIALOK', serialPortOK, 0, 0);
@@ -159,23 +162,16 @@ const main = () => {
 		console.log('Exit 2');
 		process.exit(2);
 	}
+	/* Init parser */
+	parser = serial.pipe(new ReadlineParser({ delimiter: '\r' }));
 	/* Callback function on serial data arrival */
-	serial.on('data', (data) => {
-		let s = data.toString();
-		// Read buffer
-		for (let i = 0; i < s.length; i++) {
-			let c = s.charAt(i);
-			// CR = Response from autochanger is complete
-			if (c == "\r") {
-				hrend = process.hrtime(hrstart);
-				log.debug(`Read from serial: ${readFromSerial} in ${Math.round(hrend[1] / 1000000)}ms`);
-				// Serial read terminated - Emit an event to send the resppnse to client.
-				em.emit('SerialReadEvent', readFromSerial);
-				readFromSerial = "";
-			} else {
-				readFromSerial += c;
-			}
-		}
+	parser.on('data', (data) => {
+		readFromSerial = data.toString();
+		hrend = process.hrtime(hrstart);
+		log.debug(`Read from serial: ${readFromSerial} in ${Math.round(hrend[1] / 1000000)}ms`);
+		// Serial read terminated - Emit an event to send the resppnse to client.
+		em.emit('SerialReadEvent', readFromSerial);
+		readFromSerial = "";
 	});
 	
 	// Init events
